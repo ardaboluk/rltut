@@ -3,14 +3,6 @@
 
 import numpy as np
 
-# set the environment
-
-transitions = np.ones(21,5,21)
-rewards = np.zeros(21,5,21)
-gamma = 0.9
-
-
-
 class PolicyIteration:
     """Class for policy iteration. Contstructor takes transition probabilities and rewards as arguments.
     Both arguments of the constructor are 3-D vectors whose indexes represent state, action and new state, respectively.
@@ -76,3 +68,26 @@ class PolicyIteration:
             self.__improvePolicy()
 
         return [self.__s_values, self.__policy]
+
+# this class is used for constructing the transition and reward matrices rather than policy iteration
+class JackCarRental:
+
+    def __init__(self):
+
+        self.__
+    
+
+if __name__ == "__main__":
+
+    # set the environment for Jack's car rental problem
+    # states are s1 = (0,20) ; s2 = (1,19) ; ... ; s21 = (20,0) respect
+    # actions are a1 = 1, a2 = 2, ..., a5 = 5, a6 = -1, a7 = -2, ..., a10 = -5
+    # where positive numbers show the number of cars moved from location 1 to location 2
+    # and negative numbers show the number of cars moved from location 2 to location 1
+    
+    transitions = np.zeros(21,10,21)
+    rewards = np.zeros(21,10,21)
+    gamma = 0.9
+    
+    transitions[]
+    
