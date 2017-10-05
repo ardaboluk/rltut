@@ -76,19 +76,28 @@ def iteratePolicy(env):
 
     if __checkTransitions(env):
         raise ValueError("Probabilities of state transitions don't add up to 1.")
+    else:
+        print("Transition check passed...")
 
     # initialize variables
     values = np.zeros(env.numStates)
     policy = np.zeros(env.numStates)
-
+    
+    episodeCounter = 1
     while True:
 
+        print("Episode {}".format(episodeCounter))
+
         # evaluate the current policy
+        print("Evaluating current policy..")
         values =  __evaluatePolicy(env,values,policy)
         
         # improve on the current policy
+        print("Improving upon current policy..")
         policy, policy_stable = __improvePolicy(env, values, policy)
 
         # if policy converged, return values and policy
         if policy_stable == True:
             return values, policy
+
+        episodeCounter += 1
