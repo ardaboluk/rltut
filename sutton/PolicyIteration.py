@@ -1,7 +1,6 @@
 
-# Policy Iteration for Chapter 4 (Dynamic Programming)
-
 """
+Policy Iteration for Chapter 4 (Dynamic Programming)
 env shold have the following methods and fields:
 numStates: the number of states.
 numActions: the number of actions.
@@ -35,6 +34,9 @@ def __evaluatePolicy(env, values, policy):
         delta = 0
         
         for s in range(0, env.numStates):
+
+            # FOR DEBUGGING
+            print("State {}".format(s))
             
             temp = values[s]
             newValue = 0
@@ -74,7 +76,7 @@ def __improvePolicy(env, values, policy):
 
 def iteratePolicy(env):
 
-    if __checkTransitions(env):
+    if not __checkTransitions(env):
         raise ValueError("Probabilities of state transitions don't add up to 1.")
     else:
         print("Transition check passed...")
