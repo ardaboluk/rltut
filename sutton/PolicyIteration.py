@@ -5,6 +5,7 @@ env shold have the following methods and fields:
 numStates: the number of states.
 numActions: the number of actions.
 gamma: discount factor for the environment.
+terminalStates: indexes of terminal states.
 getProbability(s,a,sprime): returns the probabiliy of transition from state s to state sprime via action a.
 getReward(s,a,sprime): returns the reward of going from state s to state sprime via action a.
 """
@@ -13,15 +14,23 @@ import numpy as np
 
 def __checkTransitions(env):
     """Checks if transitions add up to 1 for each state-action pair, returns False."""
+
+    epsilon = 0.0000001
     
     for s in range(0,env.numStates):
         for a in range(0,env.numActions):
+
+            if s in env.terminalStates:
+                continue
+            
             sumProbs = 0                
             for sprime in range(0,env.numStates):
                 sumProbs += env.getProbability(s,a,sprime)
                 
-            if sumProbs != 1:
+            if abs(sumProbs - 1) > epsilon:
                 return False
+
+    return True
 
 def __evaluatePolicy(env, values, policy):
     """Performs policy evaluation and returns approximate state-values for a given policy."""

@@ -16,6 +16,7 @@ class GridWorldEnvironment:
         self.numStates = numRows * numCols
         self.numActions = 4
         self.gamma = gamma
+        self.terminalStates = [0,15]
         
 
     def getProbability(self,s,a,sprime):

@@ -5,9 +5,10 @@ env shold have the following methods and fields:
 numStates: the number of states.
 numActions: the number of actions.
 gamma: discount factor for the environment.
+terminalStates: indexes of terminal states.
 probMat: Matrix of transition probabilities. Shape (numStates, numActions, numStates).
 rewardMat: Matrix of rewards. Shape (numStates, numActions, numStates).
-loadEnvironmentMatrices(): loads transition probability and reward matrices from files.
+getEnvironmentMatrices(): gives transition probability and reward matrices.
 getProbability(): returns transition probability (not required).
 getReward(): returns reward (not required).
 """
@@ -17,10 +18,19 @@ import os
 
 def __checkTransitions(env):
     """Checks if transitions add up to 1 for each state-action pair, returns False."""
+
+    epsilon = 0.0000001
     
-    for i in np.sum(env.probMat, axis = 2).flat:
-        if i != 1:
-            return False
+    sumProbs = np.sum(env.probMat, axis = 2)
+    
+    for s in range(0,env.numStates):
+        if s in env.terminalStates:
+            continue        
+        for a in range(0,env.numActions):
+            if abs(sumProbs[s,a] - 1) > epsilon:
+                return False
+
+    return True
     
 def __evaluatePolicy(env, values, policy):
     """Performs policy evaluation and returns approximate state-values for a given policy."""
@@ -56,7 +66,7 @@ def __improvePolicy(env,values,policy):
 def iteratePolicy(env):
 
     # make the environment load its probability and reward matrices from files
-    env.loadEnvironmentMatrices()
+    env.getEnvironmentMatrices()
 
     if not __checkTransitions(env):
         raise ValueError("Probabilities of state transitions don't add up to 1.")
@@ -65,7 +75,8 @@ def iteratePolicy(env):
 
     # initialize values and policy arrays
     values = np.zeros(env.numStates)
-    policy = np.zeros(env.numStates)
+    #policy = np.zeros(env.numStates)
+    policy = np.ones(env.numStates) * 5
     
     episodeCounter = 1
     while True:
