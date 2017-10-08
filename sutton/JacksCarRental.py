@@ -42,21 +42,21 @@ class JacksCarRentalEnvironment:
         values1 = np.tile(numLoc1,(21,21))
         values2 = np.tile(numLoc2,(21,21))
 
-        # number of cars after performing the action (if possible)
-        cond1 = np.logical_and(values1-(a-5)>=0,values1-(a-5)<=20)
-        cond2 = np.logical_and(values2+(a-5)>=0,values2+(a-5)<=20)
-        values1[np.logical_and(cond1,cond2)] = values1[np.logical_and(cond1,cond2)]-(a-5)
-        values2[np.logical_and(cond1,cond2)] = values2[np.logical_and(cond1,cond2)]+(a-5)
-
         # number of cars that are returned the previous day, which become available today
         # this should come before action, because we know the number of cars that will be available
         # before performing the action
         meshRow = np.tile(np.array([range(0,21)]).T,(1,21))
-        meshCol = np.tile(np.array([range(0,21)]),(21,1))
         values1 = np.clip(values1+meshRow,0,20)
         values2 = np.clip(values2+meshRow,0,20)
 
+        # number of cars after performing the action (if possible)
+        cond1 = np.logical_and(np.tile(numLoc1,(21,21))-(a-5)>=0,values1-(a-5)<=20)
+        cond2 = np.logical_and(np.tile(numLoc2,(21,21))+(a-5)>=0,values2+(a-5)<=20)
+        values1[np.logical_and(cond1,cond2)] = values1[np.logical_and(cond1,cond2)]-(a-5)
+        values2[np.logical_and(cond1,cond2)] = values2[np.logical_and(cond1,cond2)]+(a-5)
+
         # number of cars after rental requests
+        meshCol = np.tile(np.array([range(0,21)]),(21,1))
         values1AfterReq = np.clip(values1-meshCol,0,20)        
         values2AfterReq = np.clip(values2-meshCol,0,20)
 
@@ -72,21 +72,17 @@ class JacksCarRentalEnvironment:
         rewards2 = reqDiff2 * 10
 
         # find the total value for performing action a in state s on all sprimes
-        q1 = 0
-        q2 = 0
+        q = 0
         for sprime in range(0,self.numStates):
             # decode the number of cars at each location from sprime
             numLoc1prime = sprime // 21
             numLoc2prime = sprime % 21
 
-            # find the value on the first location
-            q1 += np.sum(np.multiply(prob1[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime] + self.gamma * v[sprime]))
-            #q1 += np.multiply(np.sum(prob1[values1AfterReq == numLoc1prime]), np.sum(rewards1[values1AfterReq == numLoc1prime]) + self.gamma * v[sprime])
-            # find the value on the second location
-            q2 += np.sum(np.multiply(prob2[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime] + self.gamma * v[sprime]))
-            #q2 += np.multiply(np.sum(prob2[values2AfterReq == numLoc2prime]), np.sum(rewards2[values2AfterReq == numLoc2prime]) + self.gamma * v[sprime])
-            #print(sprime,q1,q2)
+            q += np.sum(np.multiply(prob1[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
+                 np.sum(np.multiply(prob2[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
+                 np.sum(prob1[values1AfterReq == numLoc1prime]) * np.sum(prob2[values2AfterReq == numLoc2prime]) * self.gamma * v[sprime]
 
         # the total value is the sum of value of location 1 and value of location 2
-        return q1 + q2
+        #return q1 + q2
+        return q
     

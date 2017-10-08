@@ -25,7 +25,8 @@ def __evaluatePolicy(env, values, policy):
             temp = values[s]
             values[s] = env.getQ(s,policy[s],values)                
             delta = np.maximum(delta, np.abs(temp - values[s]))
-        print(delta)
+
+        print("Delta: {}".format(delta))
 
     return values
 
@@ -35,6 +36,8 @@ def __improvePolicy(env, values, policy):
     policy_stable = True
 
     for s in range(0, env.numStates):
+
+        print("State {}".format(s))
         
         temp = policy[s]
         
