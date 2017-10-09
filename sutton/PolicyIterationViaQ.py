@@ -9,6 +9,7 @@ getQ(s,a,values): returns the value of performing action in state s
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 def __evaluatePolicy(env, values, policy):
     """Performs policy evaluation and returns approximate state-values for a given policy."""
@@ -78,5 +79,11 @@ def iteratePolicy(env):
         # if policy converged, return values and policy
         if policy_stable == True:
             return values, policy
+
+        print("Values:\n{}".format(values))
+        print("Policy:\n{}".format(np.rot90((policy-5).reshape(21,21))))
+        
+        plt.imshow(np.rot90((policy-5).reshape(21,21)), cmap="hot", interpolation="nearest")
+        plt.show()
 
         episodeCounter += 1
