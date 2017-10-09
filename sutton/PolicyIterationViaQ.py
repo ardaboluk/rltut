@@ -60,7 +60,7 @@ def iteratePolicy(env):
 
     # initialize variables
     values = np.zeros(env.numStates)
-    policy = np.zeros(env.numStates)
+    policy = np.ones(env.numStates) * 5
     
     episodeCounter = 1
     while True:

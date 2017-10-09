@@ -71,18 +71,35 @@ class JacksCarRentalEnvironment:
         rewards1 = reqDiff1 * 10
         rewards2 = reqDiff2 * 10
 
-        # find the total value for performing action a in state s on all sprimes
-        q = 0
-        for sprime in range(0,self.numStates):
-            # decode the number of cars at each location from sprime
-            numLoc1prime = sprime // 21
-            numLoc2prime = sprime % 21
+        numLoc1primes = np.tile(meshRow.reshape(-1,1),(1,21)).reshape(21,21,21)
+        numLoc2primes = np.tile(numLoc1primes, (21,1,1))
+        numLoc1primes = np.repeat(numLoc1primes, 21, axis = 0)
 
-            q += np.sum(np.multiply(prob1[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
-                 np.sum(np.multiply(prob2[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
-                 np.sum(prob1[values1AfterReq == numLoc1prime]) * np.sum(prob2[values2AfterReq == numLoc2prime]) * self.gamma * v[sprime]
+        prob1tiled = np.tile(prob1,(441,1,1))
+        prob2tiled = np.tile(prob2,(441,1,1))
+        rewards1tiled = np.tile(rewards1,(441,1,1))
+        rewards2tiled = np.tile(rewards2,(441,1,1))
+
+        # find the total value for performing action a in state s on all sprimes
+        loc1TrueInd = np.where(values1AfterReq == numLoc1primes)
+        loc1TrueInd = np.hstack((np.array(loc1TrueInd[0]).reshape(-1,1), np.array(loc1TrueInd[1]).reshape(-1,1), np.array(loc1TrueInd[2]).reshape(-1,1)))
+        q = 1 + 1
+        q = np.sum(np.multiply(prob1tiled[values1AfterReq == numLoc1primes],rewards1tiled[values1AfterReq == numLoc1primes])) + \
+                 np.sum(np.multiply(prob2tiled[values2AfterReq == numLoc2primes],rewards2tiled[values2AfterReq == numLoc2primes])) + \
+                 np.sum(prob1tiled[values1AfterReq == numLoc1primes]) * \
+                 prob2tiled[np.logical_and(values1AfterReq == numLoc1primes,values2AfterReq == numLoc2primes)]) * self.gamma * v[np.arange(441)]
+
+        # find the total value for performing action a in state s on all sprimes
+        # q = 0
+        # for sprime in range(0,self.numStates):
+        #     # decode the number of cars at each location from sprime
+        #     numLoc1prime = sprime // 21
+        #     numLoc2prime = sprime % 21
+
+        #     q += np.sum(np.multiply(prob1[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
+        #          np.sum(np.multiply(prob2[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
+        #          np.sum(prob1[values1AfterReq == numLoc1prime]) * np.sum(prob2[values2AfterReq == numLoc2prime]) * self.gamma * v[sprime]
 
         # the total value is the sum of value of location 1 and value of location 2
         #return q1 + q2
         return q
-    
