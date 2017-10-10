@@ -83,7 +83,7 @@ def iteratePolicy(env):
         print("Values:\n{}".format(values))
         print("Policy:\n{}".format(np.rot90((policy-5).reshape(21,21))))
         
-        plt.imshow(np.rot90((policy-5).reshape(21,21)), cmap="hot", interpolation="nearest")
+        plt.imshow(np.rot90((policy-5).reshape(21,21).T), cmap="hot", interpolation="nearest")
         plt.show()
 
         episodeCounter += 1

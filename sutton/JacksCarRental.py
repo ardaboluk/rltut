@@ -39,28 +39,39 @@ class JacksCarRentalEnvironment:
         # prob shows the probability of i cars being returned previous day and j cars being requested today.
 
         # number of cars at the end of the previous day for each location
-        values1 = np.tile(np.float(numLoc1),(21,21,21))
-        values2 = np.tile(np.float(numLoc2),(21,21,21))
+        values1 = np.tile(np.float(numLoc1),(21,21,21,21))
+        values2 = np.tile(np.float(numLoc2),(21,21,21,21))
 
         # number of cars that are returned the previous day, which become available today
         # this should come before action, because we know the number of cars that will be available
         # before performing the action
         meshRow1 = np.tile(np.array([range(0,21)]).T,(1,21))
-        meshRow1 = np.tile(meshRow1,(21,1,1))
-        meshRow2 = np.rot90(meshRow1.T, k = -1)
+        meshRow1 = np.tile(meshRow1,(21,21,1,1))
+        meshRow1 = np.rot90(meshRow1.T,k=-1)
+        meshRow2 = np.tile(np.array([range(0,21)]).T,(1,21))
+        meshRow2 = np.tile(meshRow2,(21,21,1,1))
         values1 = np.clip(values1+meshRow1,0,20)
         values2 = np.clip(values2+meshRow2,0,20)
 
         # number of cars after performing the action (if possible)
-        if a < 5 and numLoc2 + (a-5) >= 0:
-            cond = values1 - (a-5) <= 20
-            values1[cond] -= np.float(a-5)
-            values2[cond] += np.float(a-5)
-        elif a > 5 and numLoc1 - (a-5) >= 0:
-            cond = values2 + (a-5) <= 20
-            values1[cond] -= np.float(a-5)
-            values2[cond] += np.float(a-5)
+        # if a < 5 and numLoc2 + (a-5) >= 0:
+        #     cond = values1 - (a-5) <= 20
+        #     values1[cond] -= np.float(a-5)
+        #     values2[cond] += np.float(a-5)
+        # elif a > 5 and numLoc1 - (a-5) >= 0:
+        #     cond = values2 + (a-5) <= 20
+        #     values1[cond] -= np.float(a-5)
+        #     values2[cond] += np.float(a-5)
 
+        if a < 5:
+            minCars = min(numLoc2 - np.clip(numLoc2+(a-5),0,20),np.clip(numLoc1-(a-5),0,20)-numLoc1)
+            values1 += minCars
+            values2 -= minCars
+        elif a > 5:
+            minCars = min(numLoc1-np.clip(numLoc1-(a-5),0,20),np.clip(numLoc2+(a-5),0,20)-numLoc2)
+            values1 -= minCars
+            values2 += minCars
+                
         #values1[cond] = values1[cond]-(a-5)
         #values2[cond] = values2[cond]+(a-5)
             
@@ -71,8 +82,8 @@ class JacksCarRentalEnvironment:
 
         # number of cars after rental requests
         meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
-        meshCol1 = np.tile(meshCol1,(21,1,1))
-        meshCol2 = meshCol1
+        meshCol1 = np.rot90(np.tile(meshCol1,(21,21,1,1)).T)
+        meshCol2 = np.rot90(meshCol1,k=-1).T
         values1AfterReq = np.clip(values1-meshCol1,0,20)        
         values2AfterReq = np.clip(values2-meshCol2,0,20)
 
@@ -88,6 +99,7 @@ class JacksCarRentalEnvironment:
         reqDiff2 = values2 - values2AfterReq
         rewards1 = reqDiff1 * 10
         rewards2 = reqDiff2 * 10
+        rewards = rewards1 + rewards2
 
         # numLoc1primes = np.tile(meshRow.reshape(-1,1),(1,21)).reshape(21,21,21)
         # numLoc2primes = np.tile(numLoc1primes, (21,1,1))
@@ -115,9 +127,9 @@ class JacksCarRentalEnvironment:
             numLoc1prime = sprime // 21
             numLoc2prime = sprime % 21
 
-            q += np.sum(np.multiply(prob[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
-                 np.sum(np.multiply(prob[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
-                 np.sum(prob[np.logical_and(values1AfterReq == numLoc1prime,values2AfterReq == numLoc2prime)]) * self.gamma * v[sprime]
+            cond = np.logical_and(values1AfterReq == numLoc1prime,values2AfterReq == numLoc2prime)
+
+            q += np.sum(np.multiply(prob[cond],rewards[cond])) +  np.sum(prob[cond]) * self.gamma * v[sprime]
 
         # the total value is the sum of value of location 1 and value of location 2
         return q
