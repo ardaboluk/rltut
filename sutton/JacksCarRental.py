@@ -39,8 +39,8 @@ class JacksCarRentalEnvironment:
         # prob shows the probability of i cars being returned previous day and j cars being requested today.
 
         # number of cars at the end of the previous day for each location
-        values1 = np.tile(numLoc1,(21,21,21))
-        values2 = np.tile(numLoc2,(21,21,21))
+        values1 = np.tile(np.float(numLoc1),(21,21,21))
+        values2 = np.tile(np.float(numLoc2),(21,21,21))
 
         # number of cars that are returned the previous day, which become available today
         # this should come before action, because we know the number of cars that will be available
@@ -54,12 +54,12 @@ class JacksCarRentalEnvironment:
         # number of cars after performing the action (if possible)
         if a < 5 and numLoc2 + (a-5) >= 0:
             cond = values1 - (a-5) <= 20
-            values1[cond] -= a-5
-            values2[cond] += a-5
+            values1[cond] -= np.float(a-5)
+            values2[cond] += np.float(a-5)
         elif a > 5 and numLoc1 - (a-5) >= 0:
             cond = values2 + (a-5) <= 20
-            values1[cond] -= a-5
-            values2[cond] += a-5
+            values1[cond] -= np.float(a-5)
+            values2[cond] += np.float(a-5)
 
         #values1[cond] = values1[cond]-(a-5)
         #values2[cond] = values2[cond]+(a-5)
