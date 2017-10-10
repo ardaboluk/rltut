@@ -81,6 +81,8 @@ class JacksCarRentalEnvironment:
         # probabilities of location 2 having the values2 numbers of cars
         prob2 = np.multiply((((2**meshRow2)/factorial(meshRow2)) * math.exp(-2)), (((4**meshCol2)/factorial(meshCol2)) * math.exp(-4)))
 
+        prob = np.multiply(prob1, prob2)
+
         # rewards shows the rewards at each location if #row car returned previous day and #col car rented today
         reqDiff1 = values1 - values1AfterReq
         reqDiff2 = values2 - values2AfterReq
@@ -113,9 +115,9 @@ class JacksCarRentalEnvironment:
             numLoc1prime = sprime // 21
             numLoc2prime = sprime % 21
 
-            q += np.sum(np.multiply(prob1[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
-                 np.sum(np.multiply(prob2[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
-                 np.sum(prob1[values1AfterReq == numLoc1prime]) * np.sum(prob2[values2AfterReq == numLoc2prime]) * self.gamma * v[sprime]
+            q += np.sum(np.multiply(prob[values1AfterReq == numLoc1prime],rewards1[values1AfterReq == numLoc1prime])) + \
+                 np.sum(np.multiply(prob[values2AfterReq == numLoc2prime],rewards2[values2AfterReq == numLoc2prime])) + \
+                 np.sum(prob[np.logical_and(values1AfterReq == numLoc1prime,values2AfterReq == numLoc2prime)]) * self.gamma * v[sprime]
 
         # the total value is the sum of value of location 1 and value of location 2
         return q
