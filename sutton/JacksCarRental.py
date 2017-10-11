@@ -53,12 +53,13 @@ class JacksCarRentalEnvironment:
         values1 = np.clip(values1+meshRow1,0,20)
         values2 = np.clip(values2+meshRow2,0,20)
 
+        minCars = 0
         if a < 5:
-            minCars = min(numLoc2 - np.clip(numLoc2+(a-5),0,20),np.clip(numLoc1-(a-5),0,20)-numLoc1)
+            minCars = np.minimum(np.tile(numLoc2,(21,21,21,21))-np.clip(np.tile(numLoc2+(a-5),(21,21,21,21)),0,20),np.clip(values1-(a-5),0,20)-values1)
             values1 += minCars
             values2 -= minCars
         elif a > 5:
-            minCars = min(numLoc1-np.clip(numLoc1-(a-5),0,20),np.clip(numLoc2+(a-5),0,20)-numLoc2)
+            minCars = np.minimum(np.tile(numLoc1,(21,21,21,21))-np.clip(np.tile(numLoc1-(a-5),(21,21,21,21)),0,20),np.clip(values2+(a-5),0,20)-values2)
             values1 -= minCars
             values2 += minCars
                 
@@ -81,7 +82,7 @@ class JacksCarRentalEnvironment:
         reqDiff2 = values2 - values2AfterReq
         rewards1 = reqDiff1 * 10
         rewards2 = reqDiff2 * 10
-        rewards = rewards1 + rewards2
+        rewards = rewards1 + rewards2 - minCars*2
 
         # vectorize the loop for sprime
         loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
