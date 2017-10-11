@@ -53,16 +53,6 @@ class JacksCarRentalEnvironment:
         values1 = np.clip(values1+meshRow1,0,20)
         values2 = np.clip(values2+meshRow2,0,20)
 
-        # number of cars after performing the action (if possible)
-        # if a < 5 and numLoc2 + (a-5) >= 0:
-        #     cond = values1 - (a-5) <= 20
-        #     values1[cond] -= np.float(a-5)
-        #     values2[cond] += np.float(a-5)
-        # elif a > 5 and numLoc1 - (a-5) >= 0:
-        #     cond = values2 + (a-5) <= 20
-        #     values1[cond] -= np.float(a-5)
-        #     values2[cond] += np.float(a-5)
-
         if a < 5:
             minCars = min(numLoc2 - np.clip(numLoc2+(a-5),0,20),np.clip(numLoc1-(a-5),0,20)-numLoc1)
             values1 += minCars
@@ -72,14 +62,6 @@ class JacksCarRentalEnvironment:
             values1 -= minCars
             values2 += minCars
                 
-        #values1[cond] = values1[cond]-(a-5)
-        #values2[cond] = values2[cond]+(a-5)
-            
-        # cond1 = np.logical_and(np.tile(numLoc1,(21,21))-(a-5)>=0,values1-(a-5)<=20)
-        # cond2 = np.logical_and(np.tile(numLoc2,(21,21))+(a-5)>=0,values2+(a-5)<=20)
-        # values1[np.logical_and(cond1,cond2)] = values1[np.logical_and(cond1,cond2)]-(a-5)
-        # values2[np.logical_and(cond1,cond2)] = values2[np.logical_and(cond1,cond2)]+(a-5)
-
         # number of cars after rental requests
         meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
         meshCol1 = np.rot90(np.tile(meshCol1,(21,21,1,1)).T)
@@ -101,35 +83,17 @@ class JacksCarRentalEnvironment:
         rewards2 = reqDiff2 * 10
         rewards = rewards1 + rewards2
 
-        # numLoc1primes = np.tile(meshRow.reshape(-1,1),(1,21)).reshape(21,21,21)
-        # numLoc2primes = np.tile(numLoc1primes, (21,1,1))
-        # numLoc1primes = np.repeat(numLoc1primes, 21, axis = 0)
-
-        # prob1tiled = np.tile(prob1,(441,1,1))
-        # prob2tiled = np.tile(prob2,(441,1,1))
-        # rewards1tiled = np.tile(rewards1,(441,1,1))
-        # rewards2tiled = np.tile(rewards2,(441,1,1))
-
-        # find the total value for performing action a in state s on all sprimes
-        # loc1TrueInd = np.where(values1AfterReq == numLoc1primes)
-        # loc1TrueInd = np.hstack((np.array(loc1TrueInd[0]).reshape(-1,1), np.array(loc1TrueInd[1]).reshape(-1,1), np.array(loc1TrueInd[2]).reshape(-1,1)))
-        # q = 1 + 1
-        # q = np.sum(np.multiply(prob1tiled[values1AfterReq == numLoc1primes],rewards1tiled[values1AfterReq == numLoc1primes])) + \
-        #          np.sum(np.multiply(prob2tiled[values2AfterReq == numLoc2primes],rewards2tiled[values2AfterReq == numLoc2primes])) + \
-        #          np.sum(prob1tiled[values1AfterReq == numLoc1primes]) * \
-        #          prob2tiled[np.logical_and(values1AfterReq == numLoc1primes,values2AfterReq == numLoc2primes)]) * self.gamma * v[np.arange(441)]
-        # return q
-
-        # find the total value for performing action a in state s on all sprimes
-        q = 0
-        for sprime in range(0,self.numStates):
-            # decode the number of cars at each location from sprime
-            numLoc1prime = sprime // 21
-            numLoc2prime = sprime % 21
-
+        # vectorize the loop for sprime
+        loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
+        vectorizedInputs = np.hstack((loc1mat.flatten().reshape(-1,1),loc2mat.flatten().reshape(-1,1)))
+        
+        def findQforOne(numLoc1prime, numLoc2prime):
             cond = np.logical_and(values1AfterReq == numLoc1prime,values2AfterReq == numLoc2prime)
-
-            q += np.sum(np.multiply(prob[cond],rewards[cond])) +  np.sum(prob[cond]) * self.gamma * v[sprime]
+            return np.sum(np.multiply(prob[cond],rewards[cond]))+np.sum(prob[cond]) * self.gamma * v[numLoc1prime*21+numLoc2prime]
+        
+        vfunc = np.vectorize(findQforOne)
+        qarray = vfunc(vectorizedInputs[:,0], vectorizedInputs[:,1])
+        q = np.sum(qarray)
 
         # the total value is the sum of value of location 1 and value of location 2
         return q
