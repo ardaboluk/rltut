@@ -1,5 +1,6 @@
 
 import numpy as np
+import tensorflow as tf
 import math
 from scipy.misc import factorial
 import os
@@ -17,6 +18,42 @@ class JacksCarRentalEnvironment:
         self.numStates = 441
         self.numActions = 11
         self.gamma = 0.9
+
+        # mesh matrices for returned and requested cars for two locations
+        self.__meshRow1 = np.tile(np.array([range(0,21)]).T,(1,21))
+        self.__meshRow1 = np.tile(self.__meshRow1,(21,21,1,1))
+        self.__meshRow1 = np.rot90(self.__meshRow1.T,k=-1)
+        self.__meshRow2 = np.tile(np.array([range(0,21)]).T,(1,21))
+        self.__meshRow2 = np.tile(self.__meshRow2,(21,21,1,1))
+
+        self.__meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
+        self.__meshCol1 = np.rot90(np.tile(self.__meshCol1,(21,21,1,1)).T)
+        self.__meshCol2 = np.rot90(self.__meshCol1,k=-1).T
+
+        # probabilities of location 1 having the values1 numbers of cars
+        prob1 = np.multiply((((3**self.__meshRow1)/factorial(self.__meshRow1)) * math.exp(-3)), (((3**self.__meshCol1)/factorial(self.__meshCol1)) * math.exp(-3)))
+        # probabilities of location 2 having the values2 numbers of cars
+        prob2 = np.multiply((((2**self.__meshRow2)/factorial(self.__meshRow2)) * math.exp(-2)), (((4**self.__meshCol2)/factorial(self.__meshCol2)) * math.exp(-4)))
+        self.__prob = np.multiply(prob1, prob2)
+
+        # construct tensorflow computation graph
+        self.__sess = tf.Session()
+        self.__init = tf.global_variables_initializer()
+        self.__vecValues1AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        self.__vecValues2AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        self.__vecNumLoc1primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        self.__vecNumLoc2primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        self.__vecProbPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
+        self.__vecRewardsPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
+        self.__vecVPlc = tf.placeholder(tf.float32, [21,21])
+
+        cond1 = tf.equal(self.__vecValues1AfterReqPlc, self.__vecNumLoc1primePlc)
+        cond2 = tf.equal(self.__vecValues2AfterReqPlc, self.__vecNumLoc2primePlc)
+        condNum = tf.cast(tf.logical_and(cond1,cond2), tf.float32)
+        vecProbCondt = tf.multiply(self.__vecProbPlc, condNum)
+        vecRewardsCondt = tf.multiply(self.__vecRewardsPlc, condNum)
+        self.__q = tf.reduce_sum(tf.multiply(vecProbCondt,vecRewardsCondt)) + tf.reduce_sum(tf.multiply(tf.reduce_sum(vecProbCondt,axis=(2,3,4,5)),  tf.multiply(self.gamma, self.__vecVPlc)))
+        
 
     def getQ(self,s,a,v):
         """Returns the state-action value for given (s,a) pair.
@@ -45,13 +82,8 @@ class JacksCarRentalEnvironment:
         # number of cars that are returned the previous day, which become available today
         # this should come before action, because we know the number of cars that will be available
         # before performing the action
-        meshRow1 = np.tile(np.array([range(0,21)]).T,(1,21))
-        meshRow1 = np.tile(meshRow1,(21,21,1,1))
-        meshRow1 = np.rot90(meshRow1.T,k=-1)
-        meshRow2 = np.tile(np.array([range(0,21)]).T,(1,21))
-        meshRow2 = np.tile(meshRow2,(21,21,1,1))
-        values1 = np.clip(values1+meshRow1,0,20)
-        values2 = np.clip(values2+meshRow2,0,20)
+        values1 = np.clip(values1+self.__meshRow1,0,20)
+        values2 = np.clip(values2+self.__meshRow2,0,20)
 
         minCars = 0
         if a < 5:
@@ -64,18 +96,8 @@ class JacksCarRentalEnvironment:
             values2 += minCars
                 
         # number of cars after rental requests
-        meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
-        meshCol1 = np.rot90(np.tile(meshCol1,(21,21,1,1)).T)
-        meshCol2 = np.rot90(meshCol1,k=-1).T
-        values1AfterReq = np.clip(values1-meshCol1,0,20)        
-        values2AfterReq = np.clip(values2-meshCol2,0,20)
-
-        # probabilities of location 1 having the values1 numbers of cars
-        prob1 = np.multiply((((3**meshRow1)/factorial(meshRow1)) * math.exp(-3)), (((3**meshCol1)/factorial(meshCol1)) * math.exp(-3)))
-        # probabilities of location 2 having the values2 numbers of cars
-        prob2 = np.multiply((((2**meshRow2)/factorial(meshRow2)) * math.exp(-2)), (((4**meshCol2)/factorial(meshCol2)) * math.exp(-4)))
-
-        prob = np.multiply(prob1, prob2)
+        values1AfterReq = np.clip(values1-self.__meshCol1,0,20)        
+        values2AfterReq = np.clip(values2-self.__meshCol2,0,20)
 
         # rewards shows the rewards at each location if #row car returned previous day and #col car rented today
         reqDiff1 = values1 - values1AfterReq
@@ -95,17 +117,28 @@ class JacksCarRentalEnvironment:
         
         vecValues1AfterReq[0:21,0:21,:,:,:,:] = values1AfterReq
         vecValues2AfterReq[0:21,0:21,:,:,:,:] = values2AfterReq
-        vecProb[0:21,0:21,:,:,:,:] = prob
+        vecProb[0:21,0:21,:,:,:,:] = self.__prob
         vecRewards[0:21,0:21,:,:,:,:] = rewards
         loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
         vecNumLoc1prime = np.rot90(np.tile(loc1mat, (21,21,21,21,1,1)).T, k = -1)
         vecNumLoc2prime = np.rot90(np.tile(loc2mat, (21,21,21,21,1,1)).T)
 
         # logical indexing converted to int8 so that the dimension information isn't lost
-        cond = np.logical_and(vecValues1AfterReq == vecNumLoc1prime, vecValues2AfterReq == vecNumLoc2prime).astype(np.int8)
-        vecProbCondt = np.multiply(vecProb, cond)
-        vecRewardsCondt = np.multiply(vecRewards, cond)
-        q = np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.sum(np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
+        # cond = np.logical_and(vecValues1AfterReq == vecNumLoc1prime, vecValues2AfterReq == vecNumLoc2prime).astype(np.int8)
+        # vecProbCondt = np.multiply(vecProb, cond)
+        # vecRewardsCondt = np.multiply(vecRewards, cond)
+        # q = np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.sum(np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
+
+        self.__sess.run(self.__init)
+        tf_feed_dict = {self.__vecValues1AfterReqPlc : vecValues1AfterReq,
+                        self.__vecValues2AfterReqPlc : vecValues2AfterReq,
+                        self.__vecNumLoc1primePlc : vecNumLoc1prime,
+                        self.__vecNumLoc2primePlc : vecNumLoc2prime,
+                        self.__vecProbPlc : vecProb,
+                        self.__vecRewardsPlc : vecRewards,
+                        self.__vecVPlc : vecV}
+        q = self.__sess.run(self.__q, feed_dict=tf_feed_dict)
+        
         print(q)
         
         return q
