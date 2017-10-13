@@ -105,7 +105,7 @@ class JacksCarRentalEnvironment:
         cond = np.logical_and(vecValues1AfterReq == vecNumLoc1prime, vecValues2AfterReq == vecNumLoc2prime).astype(np.int8)
         vecProbCondt = np.multiply(vecProb, cond)
         vecRewardsCondt = np.multiply(vecRewards, cond)
-        q = np.sum(np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
+        q = np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.sum(np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
         print(q)
-        return q
         
+        return q
