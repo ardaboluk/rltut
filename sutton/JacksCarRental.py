@@ -84,17 +84,28 @@ class JacksCarRentalEnvironment:
         rewards2 = reqDiff2 * 10
         rewards = rewards1 + rewards2 - minCars*2
 
-        # vectorize the loop for sprime
+        # vectorize each element to get the q-value without loop
+        vecValues1AfterReq = np.zeros((21,21,21,21,21,21))
+        vecValues2AfterReq = np.zeros((21,21,21,21,21,21))
+        vecProb = np.zeros((21,21,21,21,21,21))
+        vecRewards = np.zeros((21,21,21,21,21,21))
+        vecV = v.reshape(21,21)
+        vecNumLoc1prime = np.zeros((21,21,21,21,21,21))
+        vecNumLoc2prime = np.zeros((21,21,21,21,21,21))
+        
+        vecValues1AfterReq[0:21,0:21,:,:,:,:] = values1AfterReq
+        vecValues2AfterReq[0:21,0:21,:,:,:,:] = values2AfterReq
+        vecProb[0:21,0:21,:,:,:,:] = prob
+        vecRewards[0:21,0:21,:,:,:,:] = rewards
         loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
-        vectorizedInputs = np.hstack((loc1mat.flatten().reshape(-1,1),loc2mat.flatten().reshape(-1,1)))
-        
-        def findQforOne(numLoc1prime, numLoc2prime):
-            cond = np.logical_and(values1AfterReq == numLoc1prime,values2AfterReq == numLoc2prime)
-            return np.sum(np.multiply(prob[cond],rewards[cond]))+np.sum(prob[cond]) * self.gamma * v[numLoc1prime*21+numLoc2prime]
-        
-        vfunc = np.vectorize(findQforOne)
-        qarray = vfunc(vectorizedInputs[:,0], vectorizedInputs[:,1])
-        q = np.sum(qarray)
+        vecNumLoc1prime = np.rot90(np.tile(loc1mat, (21,21,21,21,1,1)).T, k = -1)
+        vecNumLoc2prime = np.rot90(np.tile(loc2mat, (21,21,21,21,1,1)).T)
 
-        # the total value is the sum of value of location 1 and value of location 2
+        # logical indexing converted to int8 so that the dimension information isn't lost
+        cond = np.logical_and(vecValues1AfterReq == vecNumLoc1prime, vecValues2AfterReq == vecNumLoc2prime).astype(np.int8)
+        vecProbCondt = np.multiply(vecProb, cond)
+        vecRewardsCondt = np.multiply(vecRewards, cond)
+        q = np.sum(np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
+        print(q)
         return q
+        
