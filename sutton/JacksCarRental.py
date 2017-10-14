@@ -20,12 +20,22 @@ class JacksCarRentalEnvironment:
         self.gamma = 0.9
 
         # mesh matrices for returned and requested cars for two locations
+        # self.__meshRow1 = np.tile(np.array([range(0,21)]).T,(1,21))
+        # self.__meshRow1 = np.tile(self.__meshRow1,(21,21,1,1))
+        # self.__meshRow1 = np.rot90(self.__meshRow1.T,k=-1)
+        # self.__meshRow2 = np.tile(np.array([range(0,21)]).T,(1,21))
+        # self.__meshRow2 = np.tile(self.__meshRow2,(21,21,1,1))
+
+        # self.__meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
+        # self.__meshCol1 = np.rot90(np.tile(self.__meshCol1,(21,21,1,1)).T)
+        # self.__meshCol2 = np.rot90(self.__meshCol1,k=-1).T
+        
         self.__meshRow1 = np.tile(np.array([range(0,21)]).T,(1,21))
         self.__meshRow1 = np.tile(self.__meshRow1,(21,21,1,1))
         self.__meshRow1 = np.rot90(self.__meshRow1.T,k=-1)
         self.__meshRow2 = np.tile(np.array([range(0,21)]).T,(1,21))
         self.__meshRow2 = np.tile(self.__meshRow2,(21,21,1,1))
-
+        
         self.__meshCol1 = np.tile(np.array([range(0,21)]),(21,1))
         self.__meshCol1 = np.rot90(np.tile(self.__meshCol1,(21,21,1,1)).T)
         self.__meshCol2 = np.rot90(self.__meshCol1,k=-1).T
@@ -37,22 +47,39 @@ class JacksCarRentalEnvironment:
         self.__prob = np.multiply(prob1, prob2)
 
         # construct tensorflow computation graph
+        # self.__sess = tf.Session()
+        # self.__init = tf.global_variables_initializer()
+        # self.__vecValues1AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        # self.__vecValues2AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        # self.__vecNumLoc1primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        # self.__vecNumLoc2primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
+        # self.__vecProbPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
+        # self.__vecRewardsPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
+        # self.__vecVPlc = tf.placeholder(tf.float32, [21,21])
+
+        # cond1 = tf.equal(self.__vecValues1AfterReqPlc, self.__vecNumLoc1primePlc)
+        # cond2 = tf.equal(self.__vecValues2AfterReqPlc, self.__vecNumLoc2primePlc)
+        # condNum = tf.cast(tf.logical_and(cond1,cond2), tf.float32)
+        # vecProbCondt = tf.multiply(self.__vecProbPlc, condNum)
+        # vecRewardsCondt = tf.multiply(self.__vecRewardsPlc, condNum)
+        # self.__q = tf.reduce_sum(tf.multiply(vecProbCondt,vecRewardsCondt)) + tf.reduce_sum(tf.multiply(tf.reduce_sum(vecProbCondt,axis=(2,3,4,5)),  tf.multiply(self.gamma, self.__vecVPlc)))
+        
         self.__sess = tf.Session()
         self.__init = tf.global_variables_initializer()
-        self.__vecValues1AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
-        self.__vecValues2AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
-        self.__vecNumLoc1primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
-        self.__vecNumLoc2primePlc = tf.placeholder(tf.int8, [21,21,21,21,21,21])
-        self.__vecProbPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
-        self.__vecRewardsPlc = tf.placeholder(tf.float32, [21,21,21,21,21,21])
-        self.__vecVPlc = tf.placeholder(tf.float32, [21,21])
+        self.__values1AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21])
+        self.__values2AfterReqPlc = tf.placeholder(tf.int8, [21,21,21,21])
+        self.__numLoc1primePlc = tf.placeholder(tf.int8, shape = ())
+        self.__numLoc2primePlc = tf.placeholder(tf.int8, shape = ())
+        self.__probPlc = tf.placeholder(tf.float32, [21,21,21,21])
+        self.__rewardsPlc = tf.placeholder(tf.float32, [21,21,21,21])
+        self.__vPlc = tf.placeholder(tf.float32, shape = ())
 
-        cond1 = tf.equal(self.__vecValues1AfterReqPlc, self.__vecNumLoc1primePlc)
-        cond2 = tf.equal(self.__vecValues2AfterReqPlc, self.__vecNumLoc2primePlc)
-        condNum = tf.cast(tf.logical_and(cond1,cond2), tf.float32)
-        vecProbCondt = tf.multiply(self.__vecProbPlc, condNum)
-        vecRewardsCondt = tf.multiply(self.__vecRewardsPlc, condNum)
-        self.__q = tf.reduce_sum(tf.multiply(vecProbCondt,vecRewardsCondt)) + tf.reduce_sum(tf.multiply(tf.reduce_sum(vecProbCondt,axis=(2,3,4,5)),  tf.multiply(self.gamma, self.__vecVPlc)))
+        cond1 = tf.equal(self.__values1AfterReqPlc, self.__numLoc1primePlc)
+        cond2 = tf.equal(self.__values2AfterReqPlc, self.__numLoc2primePlc)
+        cond = tf.logical_and(cond1,cond2)
+        probCondt = tf.boolean_mask(self.__probPlc, cond)
+        rewardsCondt= tf.boolean_mask(self.__rewardsPlc, cond)
+        self.__qsingle = tf.reduce_sum(tf.multiply(probCondt, rewardsCondt)) + tf.multiply(tf.reduce_sum(probCondt),  tf.multiply(self.__vPlc, self.gamma))
         
 
     def getQ(self,s,a,v):
@@ -107,21 +134,21 @@ class JacksCarRentalEnvironment:
         rewards = rewards1 + rewards2 - minCars*2
 
         # vectorize each element to get the q-value without loop
-        vecValues1AfterReq = np.zeros((21,21,21,21,21,21))
-        vecValues2AfterReq = np.zeros((21,21,21,21,21,21))
-        vecProb = np.zeros((21,21,21,21,21,21))
-        vecRewards = np.zeros((21,21,21,21,21,21))
-        vecV = v.reshape(21,21)
-        vecNumLoc1prime = np.zeros((21,21,21,21,21,21))
-        vecNumLoc2prime = np.zeros((21,21,21,21,21,21))
+        # vecValues1AfterReq = np.zeros((21,21,21,21,21,21))
+        # vecValues2AfterReq = np.zeros((21,21,21,21,21,21))
+        # vecProb = np.zeros((21,21,21,21,21,21))
+        # vecRewards = np.zeros((21,21,21,21,21,21))
+        # vecV = v.reshape(21,21)
+        # vecNumLoc1prime = np.zeros((21,21,21,21,21,21))
+        # vecNumLoc2prime = np.zeros((21,21,21,21,21,21))
         
-        vecValues1AfterReq[0:21,0:21,:,:,:,:] = values1AfterReq
-        vecValues2AfterReq[0:21,0:21,:,:,:,:] = values2AfterReq
-        vecProb[0:21,0:21,:,:,:,:] = self.__prob
-        vecRewards[0:21,0:21,:,:,:,:] = rewards
-        loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
-        vecNumLoc1prime = np.rot90(np.tile(loc1mat, (21,21,21,21,1,1)).T, k = -1)
-        vecNumLoc2prime = np.rot90(np.tile(loc2mat, (21,21,21,21,1,1)).T)
+        # vecValues1AfterReq[0:21,0:21,:,:,:,:] = values1AfterReq
+        # vecValues2AfterReq[0:21,0:21,:,:,:,:] = values2AfterReq
+        # vecProb[0:21,0:21,:,:,:,:] = self.__prob
+        # vecRewards[0:21,0:21,:,:,:,:] = rewards
+        # loc2mat, loc1mat = np.meshgrid(np.arange(21),np.arange(21))
+        # vecNumLoc1prime = np.rot90(np.tile(loc1mat, (21,21,21,21,1,1)).T, k = -1)
+        # vecNumLoc2prime = np.rot90(np.tile(loc2mat, (21,21,21,21,1,1)).T)
 
         # logical indexing converted to int8 so that the dimension information isn't lost
         # cond = np.logical_and(vecValues1AfterReq == vecNumLoc1prime, vecValues2AfterReq == vecNumLoc2prime).astype(np.int8)
@@ -130,15 +157,21 @@ class JacksCarRentalEnvironment:
         # q = np.sum(np.multiply(vecProbCondt,vecRewardsCondt)) + np.sum(np.multiply(np.sum(vecProbCondt,axis=(2,3,4,5)),  self.gamma * vecV))
 
         self.__sess.run(self.__init)
-        tf_feed_dict = {self.__vecValues1AfterReqPlc : vecValues1AfterReq,
-                        self.__vecValues2AfterReqPlc : vecValues2AfterReq,
-                        self.__vecNumLoc1primePlc : vecNumLoc1prime,
-                        self.__vecNumLoc2primePlc : vecNumLoc2prime,
-                        self.__vecProbPlc : vecProb,
-                        self.__vecRewardsPlc : vecRewards,
-                        self.__vecVPlc : vecV}
-        q = self.__sess.run(self.__q, feed_dict=tf_feed_dict)
         
-        print(q)
+        qSum = 0
+        for sprime in range(self.numStates):
         
-        return q
+            numLoc1prime = sprime // 21
+            numLoc2prime = sprime % 21
+        
+            tf_feed_dict = {self.__values1AfterReqPlc : values1AfterReq,
+                            self.__values2AfterReqPlc : values2AfterReq,
+                            self.__numLoc1primePlc : numLoc1prime,
+                            self.__numLoc2primePlc : numLoc2prime,
+                            self.__probPlc : self.__prob,
+                            self.__rewardsPlc : rewards,
+                            self.__vPlc : v[sprime]}
+                            
+            qSum += self.__sess.run(self.__qsingle, feed_dict=tf_feed_dict)
+			
+        return qSum

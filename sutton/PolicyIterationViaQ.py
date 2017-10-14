@@ -15,7 +15,7 @@ def __evaluatePolicy(env, values, policy):
     """Performs policy evaluation and returns approximate state-values for a given policy."""
     
     delta = 100
-    theta = 0.01
+    theta = 0.001
     
     while delta > theta:
         
