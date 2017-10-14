@@ -1,4 +1,3 @@
-
 """
 Policy Iteration via state-action values for Chapter 4 (Dynamic Programming)
 env shold have the following methods and fields:
