@@ -2,18 +2,110 @@
 #include <stdio.h>
 #include <math.h>
 
-float values[441] = 0;
-int policy[441] = 5;
+float values[441] = {0};
+int policy[441] = {5};
 
-int getQ(int s, int a){
+// cache the powers and factorials
+float powers3[21] = {0};
+float powers2[21] = {0};
+float powers4[21] = {0};
+int factorials[21] = {0};
+float expo3 = 0;
+float expo2 = 0;
+float expo4 = 0;
 
-    
+int fact(int num){
+
+  int result = 1;
+  
+  for(int i = 2; i <= num; i++){
+    result *= i;
+  }
+
+  return result;
+}
+
+void initCaches(){
+
+  expo3 = expf(-3.0);
+  expo2 = expf(-2.0);
+  expo4 = expf(-4.0);
+
+  for(int i = 0; i < 21; i++){
+
+    powers3[i] = pow(3.0,i);
+    powers2[i] = pow(2.0,i);
+    powers4[i] = pow(4.0,i);
+    factorials[i] = fact(i);
+  }
+}
+
+float getQ(int s, int a){
+
+  float q = 0;
+  
+  // decode the number of cars at each location from s
+  int numLoc1 = (int)floor(s/21.0);
+  int numLoc2 = s % 21;
+
+  for(int sprime = 0; sprime < 441; sprime++){
+
+    // decode the number of cars at each location from sprime
+    int numLoc1prime = (int)floor(sprime/21.0);
+    int numLoc2prime = sprime % 21;
+
+    float sprimeProb = 0;
+
+    for(int ret1 = 0; ret1 < 20; ret1++){
+      for(int req1 = 0; req1 < 20; req1++){
+	for(int ret2 = 0; ret2 < 20; ret2++){
+	  for(int req2 = 0; req2 < 20; req2++){
+	    
+	    /*float prob = ((powf(3.0,ret1)/fact(ret1)) * expf(-3.0)) * ((powf(3.0,req1)/fact(req1)) * expf(-3.0)) *
+	      ((powf(2.0,ret2)/fact(ret2)) * expf(-2.0)) * ((powf(4.0,req2)/fact(req2)) * expf(-4.0));*/
+
+	    float prob = ((powers3[ret1]/factorials[ret1]) * expo3) * ((powers3[req1]/factorials[req1]) * expo3) *
+	      ((powers2[ret2]/factorials[ret2]) * expo2) * ((powers4[req2]/factorials[req2]) * expo4);
+
+	    // clip the new numbers of the two locations between 0 and 20
+	    int newValue1 = fmax(0, fmin(numLoc1 + ret1, 20));
+	    int newValue2 = fmax(0, fmin(numLoc2 + ret2, 20));
+
+	    int minCars = 0;
+	    if(a < 5){
+	      minCars = fmin(numLoc2 - fmax(0, numLoc2 + (a-5)), fmin(newValue1 - (a-5), 20) - newValue1);
+	      newValue1 += minCars;
+	      newValue2 -= minCars;	      
+	    }else if(a > 5){
+	      minCars = fmin(numLoc1 - fmax(0, numLoc1 - (a-5)), fmin(newValue2 + (a-5), 20) - newValue2);
+	      newValue1 -= minCars;
+	      newValue2 += minCars;	      
+	    }
+
+	    int newValue1AfterReq = fmax(0, newValue1 - req1);
+	    int newValue2AfterReq = fmax(0, newValue2 - req2);
+
+	    if(newValue1AfterReq == numLoc1prime && newValue2AfterReq == numLoc2prime){
+
+	      int reward = ((newValue1 - newValue1AfterReq) + (newValue2 - newValue2AfterReq)) * 10 - minCars * 2;
+	      q += prob * reward;
+	      sprimeProb += prob;
+	    }    
+	  }	  
+	}	
+      }
+    }
+
+    q += sprimeProb * 0.9 * values[sprime];
+  }
+
+  return q;
 }
 
 void evaluatePolicy(){
 
   float delta = 100;
-  float theta = 0.001;
+  float theta = 0.01;
 
   while(delta > theta){
 
@@ -21,18 +113,19 @@ void evaluatePolicy(){
 
     for(int s = 0; s < 441; s++){
 
+      printf("Eval state %d\n", s);
       float temp = values[s];
       values[s] = getQ(s,policy[s]);
       delta = fmaxf(delta, fabsf(temp-values[s]));
     }
 
-    printf("Delta: %d", delta);
+    printf("Delta: %lf\n", delta);
   }  
 }
 
 int improvePolicy(){
 
-  policy_stable = 1;
+  int policy_stable = 1;
 
   for(int s = 0; s < 441; s++){
 
@@ -71,28 +164,33 @@ void writeValuesAndPolicy(char * valuesFileName, char * policyFileName){
   for(int s = 0; s < 441; s++){
     if(s < 440){
       fprintf(fpv, "%f,", values[s]);
-      fprintf(fpp, "%f,", policy[s]);
+      fprintf(fpp, "%d,", policy[s]);
     }
     else{
       fprintf(fpv, "%f", values[s]);
-      fprintf(fpp, "%f", policy[s]);
+      fprintf(fpp, "%d", policy[s]);
     }
   }
 
   fclose(fpv);
-  fclose(fpp)
+  fclose(fpp);
 }
 
 int main(){
 
-  int episodeCounter = 0;
+  setbuf(stdout,NULL);
+
+  int episodeCounter = 1;
   int policy_stable = 0;
 
   while(1){
 
-    printf("Episode %d", episodeCounter);
+    printf("Episode %d\n", episodeCounter);
 
-    printf("Evaluating current policy..");
+    printf("Evaluating current policy..\n");
+    evaluatePolicy();
+
+    printf("Improving current policy..\n");
     policy_stable = improvePolicy();
 
     if(policy_stable == 1){
