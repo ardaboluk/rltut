@@ -2,17 +2,17 @@
 #include <stdio.h>
 #include <math.h>
 
-float values[441] = {0};
+double values[441] = {0};
 int policy[441] = {5};
 
 // cache the powers and factorials
-float powers3[21] = {0};
-float powers2[21] = {0};
-float powers4[21] = {0};
+double powers3[21] = {0};
+double powers2[21] = {0};
+double powers4[21] = {0};
 int factorials[21] = {0};
-float expo3 = 0;
-float expo2 = 0;
-float expo4 = 0;
+double expo3 = 0;
+double expo2 = 0;
+double expo4 = 0;
 
 int fact(int num){
 
@@ -40,9 +40,9 @@ void initCaches(){
   }
 }
 
-float getQ(int s, int a){
+double getQ(int s, int a){
 
-  float q = 0;
+  double q = 0;
   
   // decode the number of cars at each location from s
   int numLoc1 = (int)floor(s/21.0);
@@ -54,17 +54,17 @@ float getQ(int s, int a){
     int numLoc1prime = (int)floor(sprime/21.0);
     int numLoc2prime = sprime % 21;
 
-    float sprimeProb = 0;
+    double sprimeProb = 0;
 
-    for(int ret1 = 0; ret1 < 20; ret1++){
-      for(int req1 = 0; req1 < 20; req1++){
-	for(int ret2 = 0; ret2 < 20; ret2++){
-	  for(int req2 = 0; req2 < 20; req2++){
+    for(int ret1 = 0; ret1 <= 20; ret1++){
+      for(int req1 = 0; req1 <= 20; req1++){
+	for(int ret2 = 0; ret2 <= 20; ret2++){
+	  for(int req2 = 0; req2 <= 20; req2++){
 	    
-	    /*float prob = ((powf(3.0,ret1)/fact(ret1)) * expf(-3.0)) * ((powf(3.0,req1)/fact(req1)) * expf(-3.0)) *
+	    /*double prob = ((powf(3.0,ret1)/fact(ret1)) * expf(-3.0)) * ((powf(3.0,req1)/fact(req1)) * expf(-3.0)) *
 	      ((powf(2.0,ret2)/fact(ret2)) * expf(-2.0)) * ((powf(4.0,req2)/fact(req2)) * expf(-4.0));*/
 
-	    float prob = ((powers3[ret1]/factorials[ret1]) * expo3) * ((powers3[req1]/factorials[req1]) * expo3) *
+	    double prob = ((powers3[ret1]/factorials[ret1]) * expo3) * ((powers3[req1]/factorials[req1]) * expo3) *
 	      ((powers2[ret2]/factorials[ret2]) * expo2) * ((powers4[req2]/factorials[req2]) * expo4);
 
 	    // clip the new numbers of the two locations between 0 and 20
@@ -104,18 +104,18 @@ float getQ(int s, int a){
 
 void evaluatePolicy(){
 
-  float delta = 100;
-  float theta = 0.01;
+  double delta = 100;
+  double theta = 0.01;
 
   while(delta > theta){
 
     delta = 0;
 
     for(int s = 0; s < 441; s++){
-
-      printf("Eval state %d\n", s);
-      float temp = values[s];
+      
+      double temp = values[s];
       values[s] = getQ(s,policy[s]);
+      printf("Eval state %d : %lf\n", s, values[s]);
       delta = fmaxf(delta, fabsf(temp-values[s]));
     }
 
@@ -131,12 +131,12 @@ int improvePolicy(){
 
     int temp = policy[s];
     int maxAction = 0;
-    float maxActionValue = -1000;
+    double maxActionValue = -1000;
 
     for(int a = 0; a < 11; a++){
 
       // get Q(s,a)
-      float newValue = getQ(s,a);
+      double newValue = getQ(s,a);
       if(newValue > maxActionValue){
 	maxActionValue = newValue;
 	maxAction = a;
@@ -182,6 +182,8 @@ int main(){
 
   int episodeCounter = 1;
   int policy_stable = 0;
+
+  initCaches();
 
   while(1){
 
