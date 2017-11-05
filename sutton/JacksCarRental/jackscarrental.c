@@ -1,7 +1,19 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
+// function prototypes
+double fact(double);
+void initCaches();
+double getQ(int, int);
+void evaluatePolicy();
+int improvePolicy();
+void policyIteration();
+void valueIteration();
+void writeValuesAndPolicy(char *, char *);
+
+// global arrays for values and policy
 double values[441] = {0};
 int policy[441] = {5};
 
@@ -9,14 +21,14 @@ int policy[441] = {5};
 double powers3[21] = {0};
 double powers2[21] = {0};
 double powers4[21] = {0};
-int factorials[21] = {0};
+double factorials[21] = {0};
 double expo3 = 0;
 double expo2 = 0;
 double expo4 = 0;
 
-int fact(int num){
+double fact(double num){
 
-  int result = 1;
+  double result = 1;
   
   for(int i = 2; i <= num; i++){
     result *= i;
@@ -27,9 +39,9 @@ int fact(int num){
 
 void initCaches(){
 
-  expo3 = expf(-3.0);
-  expo2 = expf(-2.0);
-  expo4 = expf(-4.0);
+  expo3 = exp(-3.0);
+  expo2 = exp(-2.0);
+  expo4 = exp(-4.0);
 
   for(int i = 0; i < 21; i++){
 
@@ -45,14 +57,14 @@ double getQ(int s, int a){
   double q = 0;
   
   // decode the number of cars at each location from s
-  int numLoc1 = (int)floor(s/21.0);
-  int numLoc2 = s % 21;
+  double numLoc1 = floor(s/21.0);
+  double numLoc2 = s % 21;
 
   for(int sprime = 0; sprime < 441; sprime++){
 
     // decode the number of cars at each location from sprime
-    int numLoc1prime = (int)floor(sprime/21.0);
-    int numLoc2prime = sprime % 21;
+    double numLoc1prime = floor(sprime/21.0);
+    double numLoc2prime = sprime % 21;
 
     double sprimeProb = 0;
 
@@ -68,10 +80,10 @@ double getQ(int s, int a){
 	      ((powers2[ret2]/factorials[ret2]) * expo2) * ((powers4[req2]/factorials[req2]) * expo4);
 
 	    // clip the new numbers of the two locations between 0 and 20
-	    int newValue1 = fmax(0, fmin(numLoc1 + ret1, 20));
-	    int newValue2 = fmax(0, fmin(numLoc2 + ret2, 20));
+	    double newValue1 = fmin(numLoc1 + ret1, 20);
+	    double newValue2 = fmin(numLoc2 + ret2, 20);
 
-	    int minCars = 0;
+	    double minCars = 0;
 	    if(a < 5){
 	      minCars = fmin(numLoc2 - fmax(0, numLoc2 + (a-5)), fmin(newValue1 - (a-5), 20) - newValue1);
 	      newValue1 += minCars;
@@ -82,12 +94,12 @@ double getQ(int s, int a){
 	      newValue2 += minCars;	      
 	    }
 
-	    int newValue1AfterReq = fmax(0, newValue1 - req1);
-	    int newValue2AfterReq = fmax(0, newValue2 - req2);
+	    double newValue1AfterReq = fmax(0, newValue1 - req1);
+	    double newValue2AfterReq = fmax(0, newValue2 - req2);
 
-	    if(newValue1AfterReq == numLoc1prime && newValue2AfterReq == numLoc2prime){
+	    if((int)(newValue1AfterReq) == (int)(numLoc1prime) && (int)(newValue2AfterReq) == (int)(numLoc2prime)){
 
-	      int reward = ((newValue1 - newValue1AfterReq) + (newValue2 - newValue2AfterReq)) * 10 - minCars * 2;
+	      double reward = ((newValue1 - newValue1AfterReq) + (newValue2 - newValue2AfterReq)) * 10 - minCars * 2;
 	      q += prob * reward;
 	      sprimeProb += prob;
 	    }    
@@ -105,7 +117,7 @@ double getQ(int s, int a){
 void evaluatePolicy(){
 
   double delta = 100;
-  double theta = 0.01;
+  double theta = 1; // was 0.01
 
   while(delta > theta){
 
@@ -143,6 +155,8 @@ int improvePolicy(){
       }
     }
 
+    printf("Improved state %d: %d", s, maxAction);
+
     policy[s] = maxAction;
 
     if(temp != policy[s]){
@@ -153,33 +167,10 @@ int improvePolicy(){
   return policy_stable;
 }
 
-void writeValuesAndPolicy(char * valuesFileName, char * policyFileName){
-
-  FILE *fpv;
-  FILE *fpp;
-
-  fpv = fopen(valuesFileName, "w");
-  fpp = fopen(policyFileName, "w");
-
-  for(int s = 0; s < 441; s++){
-    if(s < 440){
-      fprintf(fpv, "%f,", values[s]);
-      fprintf(fpp, "%d,", policy[s]);
-    }
-    else{
-      fprintf(fpv, "%f", values[s]);
-      fprintf(fpp, "%d", policy[s]);
-    }
-  }
-
-  fclose(fpv);
-  fclose(fpp);
-}
-
-int main(){
+void policyIteration(){
 
   setbuf(stdout,NULL);
-
+  
   int episodeCounter = 1;
   int policy_stable = 0;
 
@@ -199,12 +190,106 @@ int main(){
       writeValuesAndPolicy("./valuesFinal.csv","./policyFinal.csv");
     }
 
-    char * valuesFileName;
-    char * policyFileName;
+    char * valuesFileName = (char *)malloc(20);
+    char * policyFileName = (char *)malloc(20);
     sprintf(valuesFileName, "./values_ep%d.csv", episodeCounter);
     sprintf(policyFileName, "./policy_ep%d.csv", episodeCounter);
     writeValuesAndPolicy(valuesFileName, policyFileName);
 
     episodeCounter += 1;
   }
+}
+
+void valueIteration(){
+
+  setbuf(stdout,NULL);
+  
+  double delta = 1000;
+  double epsilon = 1;
+
+  initCaches();
+
+  int iterationCounter = 1;
+
+  // find the value for each state
+  printf("Value iteration...\n");
+  while(delta > epsilon){
+
+    printf("Iteration %d delta %lf\n", iterationCounter, delta);
+
+    delta = 0;
+
+    for(int s = 0; s < 441; s++){
+
+      double temp = values[s];
+
+      // find the action that maximizes the value of state s
+      double maxActionValue = -1000;
+      for(int a = 0; a < 11; a++){	
+	double newValue = getQ(s,a);
+	if(newValue > maxActionValue){
+	  maxActionValue = newValue;
+	}
+      }
+      
+      values[s] = maxActionValue;
+
+      delta = fmaxf(delta, fabsf(temp-values[s]));
+
+      printf("State %d value: %lf\n", s, values[s]);
+    }
+
+    iterationCounter++;
+  }
+
+  // find the policy for each state from the values
+  printf("Finding the policy...\n");
+  for(int s = 0; s < 441; s++){
+
+    int maxAction = 0;
+    double maxActionValue = -1000;
+
+    for(int a = 0; a < 11; a++){
+      double newValue = getQ(s,a);
+      if(newValue > maxActionValue){
+	maxActionValue = newValue;
+	maxAction = a;
+      }
+    }
+
+    policy[s] = maxAction;
+  }
+
+  // write values and policy
+  writeValuesAndPolicy("./valuesFinal.csv","./policyFinal.csv");
+}
+
+void writeValuesAndPolicy(char * valuesFileName, char * policyFileName){
+
+  FILE *fpv;
+  FILE *fpp;
+
+  fpv = fopen(valuesFileName, "w");
+  fpp = fopen(policyFileName, "w");
+
+  for(int s = 0; s < 441; s++){
+    if(s < 440){
+      fprintf(fpv, "%lf,", values[s]);
+      fprintf(fpp, "%d,", policy[s]);
+    }
+    else{
+      fprintf(fpv, "%lf", values[s]);
+      fprintf(fpp, "%d", policy[s]);
+    }
+  }
+
+  fclose(fpv);
+  fclose(fpp);
+}
+
+double main(){
+
+  //policyIteration();
+  valueIteration();
+  
 }
