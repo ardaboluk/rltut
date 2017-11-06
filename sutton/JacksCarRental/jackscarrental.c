@@ -155,7 +155,7 @@ int improvePolicy(){
       }
     }
 
-    printf("Improved state %d: %d", s, maxAction);
+    printf("Improved state %d: %d\n", s, maxAction);
 
     policy[s] = maxAction;
 
