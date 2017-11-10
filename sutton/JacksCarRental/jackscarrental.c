@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define MAX_RET 30
+#define MAX_REQ 30
+
 // function prototypes
 double fact(double);
 void initCaches();
@@ -18,13 +21,14 @@ double values[441] = {0};
 int policy[441] = {5};
 
 // cache the powers and factorials
-double powers3[21] = {0};
-double powers2[21] = {0};
-double powers4[21] = {0};
-double factorials[21] = {0};
+double powers3[MAX_RET + 1] = {0};
+double powers2[MAX_RET + 1] = {0};
+double powers4[MAX_RET + 1] = {0};
+double factorials[MAX_RET + 1] = {0};
 double expo3 = 0;
 double expo2 = 0;
 double expo4 = 0;
+double probs[MAX_RET + 1][MAX_REQ + 1][MAX_RET + 1][MAX_REQ + 1] = {0};
 
 double fact(double num){
 
@@ -43,13 +47,26 @@ void initCaches(){
   expo2 = exp(-2.0);
   expo4 = exp(-4.0);
 
-  for(int i = 0; i < 21; i++){
+  for(int i = 0; i < MAX_RET + 1; i++){
 
     powers3[i] = pow(3.0,i);
     powers2[i] = pow(2.0,i);
     powers4[i] = pow(4.0,i);
     factorials[i] = fact(i);
   }
+
+  for(int ret1 = 0; ret1 <= MAX_RET; ret1++){
+    for(int req1 = 0; req1 <= MAX_REQ; req1++){
+      for(int ret2 = 0; ret2 <= MAX_RET; ret2++){
+	for(int req2 = 0; req2 <= MAX_REQ; req2++){
+
+	  probs[ret1][req1][ret2][req2] = ((powers3[ret1]/factorials[ret1]) * expo3) * ((powers3[req1]/factorials[req1]) * expo3) *
+	    ((powers2[ret2]/factorials[ret2]) * expo2) * ((powers4[req2]/factorials[req2]) * expo4);
+	}
+      }
+    }
+  }
+
 }
 
 double getQ(int s, int a){
@@ -59,65 +76,55 @@ double getQ(int s, int a){
   // decode the number of cars at each location from s
   double numLoc1 = floor(s/21.0);
   double numLoc2 = s % 21;
+  
+  for(int ret1 = 0; ret1 <= MAX_RET; ret1++){
+    for(int req1 = 0; req1 <= MAX_REQ; req1++){
+      for(int ret2 = 0; ret2 <= MAX_RET; ret2++){
+	for(int req2 = 0; req2 <= MAX_REQ; req2++){
+	  
+	  /*double prob = ((powf(3.0,ret1)/fact(ret1)) * expf(-3.0)) * ((powf(3.0,req1)/fact(req1)) * expf(-3.0)) *
+	    ((powf(2.0,ret2)/fact(ret2)) * expf(-2.0)) * ((powf(4.0,req2)/fact(req2)) * expf(-4.0));*/
+	  
+	  double prob = probs[ret1][req1][ret2][req2];
+	  
+	  // clip the new numbers of the two locations between 0 and 20
+	  double newValue1 = numLoc1 - (a-5);
+	  double newValue2 = numLoc2 + (a-5);
+	  
+	  double newValue1AfterReq = fmax(0, newValue1 - req1);
+	  double newValue2AfterReq = fmax(0, newValue2 - req2);
 
-  for(int sprime = 0; sprime < 441; sprime++){
+	  double reward = ((newValue1 - newValue1AfterReq) + (newValue2 - newValue2AfterReq)) * 10 - abs(a - 5) * 2;
 
-    // decode the number of cars at each location from sprime
-    double numLoc1prime = floor(sprime/21.0);
-    double numLoc2prime = sprime % 21;
+	  double newValue1Final = fmin(newValue1AfterReq + ret1, 20);
+	  double newValue2Final = fmin(newValue2AfterReq + ret2, 20);
+	  
+	  /*double minCars = 0;
+	  if(a < 5){
+	    minCars = fmin(numLoc2 - fmax(0, numLoc2 + (a-5)), fmin(newValue1 - (a-5), 20) - newValue1);
+	    newValue1 += minCars;
+	    newValue2 -= minCars;	      
+	  }else if(a > 5){
+	    minCars = fmin(numLoc1 - fmax(0, numLoc1 - (a-5)), fmin(newValue2 + (a-5), 20) - newValue2);
+	    newValue1 -= minCars;
+	    newValue2 += minCars;	      
+	    }*/
+	  
+	  int sprime = newValue1Final * 21 + newValue2Final;
 
-    double sprimeProb = 0;
-
-    for(int ret1 = 0; ret1 <= 20; ret1++){
-      for(int req1 = 0; req1 <= 20; req1++){
-	for(int ret2 = 0; ret2 <= 20; ret2++){
-	  for(int req2 = 0; req2 <= 20; req2++){
-	    
-	    /*double prob = ((powf(3.0,ret1)/fact(ret1)) * expf(-3.0)) * ((powf(3.0,req1)/fact(req1)) * expf(-3.0)) *
-	      ((powf(2.0,ret2)/fact(ret2)) * expf(-2.0)) * ((powf(4.0,req2)/fact(req2)) * expf(-4.0));*/
-
-	    double prob = ((powers3[ret1]/factorials[ret1]) * expo3) * ((powers3[req1]/factorials[req1]) * expo3) *
-	      ((powers2[ret2]/factorials[ret2]) * expo2) * ((powers4[req2]/factorials[req2]) * expo4);
-
-	    // clip the new numbers of the two locations between 0 and 20
-	    double newValue1 = fmin(numLoc1 + ret1, 20);
-	    double newValue2 = fmin(numLoc2 + ret2, 20);
-
-	    double minCars = 0;
-	    if(a < 5){
-	      minCars = fmin(numLoc2 - fmax(0, numLoc2 + (a-5)), fmin(newValue1 - (a-5), 20) - newValue1);
-	      newValue1 += minCars;
-	      newValue2 -= minCars;	      
-	    }else if(a > 5){
-	      minCars = fmin(numLoc1 - fmax(0, numLoc1 - (a-5)), fmin(newValue2 + (a-5), 20) - newValue2);
-	      newValue1 -= minCars;
-	      newValue2 += minCars;	      
-	    }
-
-	    double newValue1AfterReq = fmax(0, newValue1 - req1);
-	    double newValue2AfterReq = fmax(0, newValue2 - req2);
-
-	    if((int)(newValue1AfterReq) == (int)(numLoc1prime) && (int)(newValue2AfterReq) == (int)(numLoc2prime)){
-
-	      double reward = ((newValue1 - newValue1AfterReq) + (newValue2 - newValue2AfterReq)) * 10 - minCars * 2;
-	      q += prob * reward;
-	      sprimeProb += prob;
-	    }    
-	  }	  
-	}	
-      }
+	  q += prob * (reward + 0.9 * values[sprime]);
+	}	  
+      }	
     }
-
-    q += sprimeProb * 0.9 * values[sprime];
   }
-
+  
   return q;
 }
 
 void evaluatePolicy(){
 
   double delta = 100;
-  double theta = 1; // was 0.01
+  double theta = 0.001; // was 0.01
 
   while(delta > theta){
 
@@ -127,12 +134,11 @@ void evaluatePolicy(){
       
       double temp = values[s];
       values[s] = getQ(s,policy[s]);
-      printf("Eval state %d : %lf\n", s, values[s]);
       delta = fmaxf(delta, fabsf(temp-values[s]));
     }
 
     printf("Delta: %lf\n", delta);
-  }  
+  }
 }
 
 int improvePolicy(){
@@ -205,7 +211,7 @@ void valueIteration(){
   setbuf(stdout,NULL);
   
   double delta = 1000;
-  double epsilon = 1;
+  double epsilon = 0.01;
 
   initCaches();
 
@@ -289,7 +295,7 @@ void writeValuesAndPolicy(char * valuesFileName, char * policyFileName){
 
 double main(){
 
-  //policyIteration();
-  valueIteration();
+  policyIteration();
+  //valueIteration();
   
 }
