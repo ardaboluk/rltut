@@ -4,64 +4,31 @@
 #include <time.h>
 
 #define NUM_STATES 101
-#define NUM_ACTIONS 101
 // the probability of the coin coming up heads
 #define P_H 0.4
 // the task is an undiscounted episodic task
 #define gamma 1
 
 #define abs(x) ((x) < 0 ? (-x) : (x))
+#define min(x,y) ((x) < (y) ? (x) : (y))
+#define max(x,y) ((x) > (y) ? (x) : (y))
 
 double values[NUM_STATES] = {0};
 int policy[NUM_STATES] = {0};
 
+// helper array for choosing max action
+double actionValues[NUM_STATES] = {0};
+
 void initPolicy();
-double min(double, double);
-double max(double, double);
 double getQ(int, int);
 void valueIteration();
+int chooseMaxAction(int);
 void writeValuesAndPolicy(char *, char *);
 
 void initPolicy(){
   for(int s = 0; s < NUM_STATES; s++){
     policy[s] = rand() % NUM_STATES;
   }
-}
-
-// min function, breaks ties randomly
-double min(double x, double y){
-
-  double minVal = 0;
-  if(x < y){
-    minVal = x;
-  }else if(y < x){
-    minVal = y;
-  }else{
-    int randVal = rand() % 2;
-    if(randVal == 0)
-      minVal = x;
-    else
-      minVal = y;
-  }
-  return minVal;
-}
-
-// max function, breaks ties randomly
-double max(double x, double y){
-
-  double maxVal = 0;
-  if(x > y){
-    maxVal = x;
-  }else if(y > x){
-    maxVal = y;
-  }else{
-    int randVal = rand() % 2;
-    if(randVal == 0)
-      maxVal = x;
-    else
-      maxVal = y;
-  }
-  return maxVal;
 }
 
 double getQ(int s, int a){
@@ -107,9 +74,9 @@ void valueIteration(){
 
       double temp = values[s];
 
-      // find the action that maximizes the value of state s
+      // find the maximum action value
       double maxActionValue = -1000;
-      for(int a = 0; a <= (int)min(s, 100-s); a++){	
+      for(int a = 0; a <= min(s, 100-s); a++){	
 	double newValue = getQ(s,a);
 	if(newValue > maxActionValue){
 	  maxActionValue = newValue;
@@ -130,23 +97,54 @@ void valueIteration(){
   printf("Finding the policy...\n");
   for(int s = 0; s < NUM_STATES; s++){
 
-    int maxAction = 0;
-    double maxActionValue = -1000;
-
-    for(int a = 0; a <= (int)min(s, 100 - s); a++){
-      double newValue = getQ(s,a);
-      if(newValue > maxActionValue){
-	maxActionValue = newValue;
-	maxAction = a;
-      }
-    }
-
-    policy[s] = maxAction;
-    printf("Policy for state %d: %d\n", s, maxAction);
+    policy[s] = chooseMaxAction(s);
+    printf("Policy for state %d: %d\n", s, policy[s]);
   }
 
   // write values and policy
   writeValuesAndPolicy("./valuesFinal.csv","./policyFinal.csv");
+}
+
+int chooseMaxAction(int s){
+
+  int maxAction = 0;
+
+  int numActions = min(s,100-s);
+  double maxActionValue = -1000;
+  // number of actions that has the maximum value
+  int numMaxActions = 0;
+
+  // DEUG
+  if(s == 50){
+    int debug = 1;
+  }
+  
+  for(int a = 0; a <= numActions; a++){
+    actionValues[a] = getQ(s,a);
+    if(actionValues[a] > maxActionValue){
+      maxActionValue = actionValues[a];
+      numMaxActions = 1;
+    }else if(actionValues[a] == maxActionValue){
+      numMaxActions++;
+    }
+  }
+
+  // randomly choose an action between the max actions
+  int randMaxActionNum = rand() % numMaxActions;
+
+  int maxActionCounter = 0;
+  for(int a = 0; a <= numActions; a++){
+    if(actionValues[a] == maxActionValue){
+      if(maxActionCounter == randMaxActionNum){
+	maxAction = a;
+	break;
+      }else{
+	maxActionCounter++;
+      }
+    }
+  }
+
+  return maxAction;  
 }
 
 void writeValuesAndPolicy(char * valuesFileName, char * policyFileName){
