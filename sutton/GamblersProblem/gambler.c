@@ -13,9 +13,6 @@
 double values[NUM_STATES] = {0};
 int policy[NUM_STATES] = {0};
 
-// helper array for choosing max action
-double actionValues[50] = {0};
-
 void initPolicy();
 double getQ(int, int);
 void valueIteration();
@@ -35,13 +32,18 @@ double getQ(int s, int a){
   int sprimeHeads = s + a;
   int sprimeTails = s - a;
 
-  int rewardHeads = 0;
+  double rewardHeads = 0;
+  double rewardTails = 0;
 
   if(sprimeHeads == 100){
     rewardHeads = 1;
   }
 
-  q = (1-P_H) * (gamma * values[sprimeTails]) + (P_H) * (rewardHeads + gamma * values[sprimeHeads]);
+  /*if(sprimeTails == 0){
+    rewardTails = -1;
+    }*/
+
+  q = (1-P_H) * (rewardTails + gamma * values[sprimeTails]) + (P_H) * (rewardHeads + gamma * values[sprimeHeads]);
   
   return q;
 }
@@ -68,7 +70,7 @@ void valueIteration(){
 
       // find the maximum action value
       double maxActionValue = -1000;
-      for(int a = 0; a <= (int)fmin(s, 100-s); a++){	
+      for(int a = 1; a <= (int)fmin(s, 100-s); a++){	
 	double newValue = getQ(s,a);
 	if(newValue > maxActionValue){
 	  maxActionValue = newValue;
@@ -97,6 +99,8 @@ void valueIteration(){
 
 int chooseMaxAction(int s){
 
+  double actionValues[51] = {0};
+
   int maxAction = 0;
 
   int numActions = (int)fmin(s,100-s);
@@ -104,7 +108,7 @@ int chooseMaxAction(int s){
   // number of actions that has the maximum value
   int numMaxActions = 0;
   
-  for(int a = 0; a <= numActions; a++){
+  for(int a = 1; a <= numActions; a++){
     actionValues[a] = getQ(s,a);
     if(actionValues[a] > maxActionValue){
       maxActionValue = actionValues[a];
@@ -118,7 +122,7 @@ int chooseMaxAction(int s){
   int randMaxActionNum = rand() % numMaxActions;
 
   int maxActionCounter = 0;
-  for(int a = 0; a <= numActions; a++){
+  for(int a = 1; a <= numActions; a++){
     if(actionValues[a] == maxActionValue){
       if(maxActionCounter == randMaxActionNum){
 	maxAction = a;
