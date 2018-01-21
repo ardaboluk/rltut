@@ -1,8 +1,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os.path
-        
+
 values = np.genfromtxt("valuesFinal.csv", delimiter=",")
 policy = np.genfromtxt("policyFinal.csv", delimiter=",")
 plt.figure()

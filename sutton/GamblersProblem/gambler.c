@@ -71,10 +71,10 @@ void valueIteration(){
       // find the maximum action value
       double maxActionValue = -1000;
       for(int a = 1; a <= (int)fmin(s, 100-s); a++){	
-	double newValue = getQ(s,a);
-	if(newValue > maxActionValue){
-	  maxActionValue = newValue;
-	}
+	      double newValue = getQ(s,a);
+	      if(newValue > maxActionValue){
+	        maxActionValue = newValue;
+	      }
       }
       
       values[s] = maxActionValue;
@@ -125,10 +125,10 @@ int chooseMaxAction(int s){
   for(int a = 1; a <= numActions; a++){
     if(actionValues[a] == maxActionValue){
       if(maxActionCounter == randMaxActionNum){
-	maxAction = a;
-	break;
+      	maxAction = a;
+	      break;
       }else{
-	maxActionCounter++;
+	      maxActionCounter++;
       }
     }
   }
