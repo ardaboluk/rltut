@@ -4,7 +4,9 @@ import numpy as np
 class NSarsa:
     """n-step Sarsa in Chapter 7."""
 
-    def __init__(self, num_states, num_actions, terminal_states, maze):
+    def __init__(self, num_states, num_actions, terminal_states, environment):
+
+        # the environment object should provide takeAction method
         
         # number of states and actions
         self.num_states = num_states
@@ -25,8 +27,8 @@ class NSarsa:
         # values of state-action pairs
         self.q_values = np.zeros((num_states, num_actions))
 
-        # maze object
-        self.maze = maze
+        # environment object
+        self.environment = environment
 
     def estimateQ(self, epsilon, gamma, alpha, num_steps, num_episodes):
 
@@ -63,7 +65,7 @@ class NSarsa:
                     print("state {} action {}".format(St, At))
 
                     # take action and observe and store the next reward and the next state
-                    [next_reward, next_state] = self.maze.takeAction(St,At)
+                    [next_reward, next_state] = self.environment.takeAction(St,At)
                     list_states.append(next_state)
                     list_rewards.append(next_reward)
 
