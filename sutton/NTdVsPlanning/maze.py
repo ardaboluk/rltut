@@ -49,11 +49,15 @@ class Maze:
         # the next state
         sprime = stateNextRow * self.numCols + stateNextCol
 
+        # if sprime corresponds to a wall, make it equal to s
+        if np.isin(sprime, self.wallStates):
+            sprime = s
+
         return sprime  
     
     def takeAction(self, s, a):
         """This function returns the reward and the next state resulting from taking
-        action a from state s. The first one is the reward and the next is the state.
+        action a from state s. The first one is the reward and the next one is the next state.
         States are indexed from left to right and from top to bottom and the first one is 0.
         The actions 0,1,2,3 are right, up, left and down."""
 
@@ -67,10 +71,6 @@ class Maze:
         else:
             # get sprime
             sprime = self.__getNextState(s,a)
-
-            # if sprime corresponds to a wall, make it equal to s
-            if np.isin(sprime, self.wallStates):
-                sprime = s
             
             # calculate the reward
             if np.isin(sprime, self.goalStates):
